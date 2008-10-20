@@ -34,6 +34,9 @@
 #define GET_PIN(P,B) ((PIN##P & _BV(B)) != 0)
 
 #define NO_DATA 0x80
+#define MODE_FIGURES 0x40
+#define MODE_LETTERS 0x20
+#define MODE_MASK (MODE_FIGURES|MODE_LETTERS)
 
 // Number of milliseconds per bit
 #define MS_PER_BIT 22
@@ -48,9 +51,16 @@
 char textBuffer[BUFFER_SIZE];
 int bufEnd;
 int bufCursor;
-int bitSending;
-int sendingCode;
-int mode;
+unsigned char bitSending;
+unsigned char sendingCode;
+unsigned char mode;
+
+enum {
+  RM_DATA = 0,
+  RM_CMD
+};
+
+unsigned char recvMode;
 
 void initBuffer() {
   bufEnd = 0;
@@ -83,6 +93,7 @@ void initClock()
 #define FLAG_PENDING_COMMAND 0x01
 char flags = 0;
 
+// This is the buffer for recieved command data
 #define RX_BUF_SIZE 64
 char rxBuf[RX_BUF_SIZE];
 int rxOffset;
@@ -123,6 +134,7 @@ void init()
   initClock();
   initBuffer();
   initSerial();
+  recvMode = RM_DATA;
   set_sleep_mode( SLEEP_MODE_IDLE );
   sei();
 }
@@ -160,18 +172,28 @@ ISR(USART_UDRE_vect)
 
 ISR(USART_RX_vect)
 {  
-  /*
-  rxBuf[ rxOffset ] = UDR0;
-  if ( rxBuf[ rxOffset ] == '\n' ) {
-    rxBuf[ rxOffset ] = '\0';
-    flags |= FLAG_PENDING_COMMAND;
-    rxOffset = 0;
-  } else {
-    rxOffset = (rxOffset+1) % RX_BUF_SIZE;
+  unsigned char data = UDR0;
+  if ( recvMode == RM_DATA ) {
+    if ( data == '\\' ) {
+      recvMode = RM_CMD;
+      rxOffset = 0;
+    } else {
+      textBuffer[ bufEnd ] = data;
+      bufEnd = (bufEnd+1) % BUFFER_SIZE;
+    }
   }
-  */
-  textBuffer[ bufEnd ] = UDR0;
-  bufEnd = (bufEnd+1) % BUFFER_SIZE;
+  if ( recvMode == RM_CMD ) {
+    if ( data == '\n' ) {
+      rxBuf[rxOffset] = '\0';
+      recvMode = RM_DATA;
+      flags = FLAG_PENDING_COMMAND;
+    } else {
+      if ( rxOffset < RX_BUF_SIZE-1 ) {
+	rxBuf[rxOffset] = data;
+	rxOffset++;
+      }
+    }
+  }
 }
 
 ISR(TIMER1_COMPA_vect)
@@ -182,8 +204,18 @@ ISR(TIMER1_COMPA_vect)
       sendingCode = NO_DATA;
     } else {
       unsigned char c = textBuffer[bufCursor];
-      sendingCode = pgm_read_byte(ustty_map + c );
-      bufCursor = (bufCursor + 1) % BUFFER_SIZE;
+      unsigned char code = pgm_read_byte(ustty_map + c );
+      if ( (mode & code & MODE_MASK) == 0 ) {
+	// switch mode
+	if ( code & MODE_LETTERS ) {
+	  sendingCode = LETTERS_CODE;
+	} else if ( code & MODE_FIGURES ) {
+	  sendingCode = FIGURES_CODE;
+	}
+      } else {
+	bufCursor = (bufCursor + 1) % BUFFER_SIZE;
+	sendingCode = code;
+      }
     }
   }
 
