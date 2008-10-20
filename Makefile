@@ -3,7 +3,7 @@ UISP = avrdude -c avrispmkII -P usb -p m168 -F
 
 COMPILE = avr-gcc -Wall -Os -Iusbdrv -I. -mmcu=atmega168 #-DDEBUG_LEVEL=1
 
-OBJECTS = teletype.o asciiToTTY.o
+OBJECTS = teletype.o asciiToUstty.o
 # OBJECTS = main.o
 
 # symbolic targets:

@@ -14,7 +14,7 @@
  * Initial code: test pattern.
  */
 
-#include "asciiToTTY.h"
+#include "asciiToUstty.h"
 
 #include <avr/interrupt.h>
 #include <avr/sleep.h>
@@ -44,13 +44,11 @@
 
 #define BUFFER_SIZE 128
 char textBuffer[BUFFER_SIZE];
-int bufStart;
 int bufEnd;
 int bufCursor;
 int bitSending;
 
 void initBuffer() {
-  bufStart = 0;
   bufEnd = 0;
   bufCursor = 0;
   bitSending = 0;
@@ -96,9 +94,9 @@ void putString( char* pStr ) {
 void initSerial() {
   // Setting to 9600 baud, 8N1.
   // 9600 baud @ 8MHz
-  // U2X = 1, UBRR = 51
+  // U2X = 1, UBRR = 103
   UBRR0H = 0;
-  UBRR0L = 18;
+  UBRR0L = 103;
   UCSR0A = 0x02;
   // enable TX/RX
   UCSR0B = (1<<RXCIE0) | (1<<RXEN0) | (1<<TXEN0);
@@ -173,7 +171,7 @@ ISR(USART_RX_vect)
 
 ISR(TIMER1_COMPA_vect)
 {
-  if (bufStart != bufEnd) {
+  if (bufCursor != bufEnd) {
     if ( bitSending == 0 ) {
       // send start bit
       LOW();
@@ -181,17 +179,11 @@ ISR(TIMER1_COMPA_vect)
       // send stop bit
       HIGH();
       bufCursor = (bufCursor + 1) % BUFFER_SIZE;
+      bitSending = 0;
     } else if ( bitSending < 6 ) {
-      int bit = 5-(bitSending);
+      int bit = bitSending - 1;
       unsigned char c = textBuffer[bufCursor];
-      unsigned char code = 0;
-      if ( c >= 'A' && c <= 'Z' ) {
-	code = pgm_read_byte(textCodes + (c-'A') );
-      } else if ( c >= 'a' && c <= 'z') {
-	code = pgm_read_byte(textCodes + (c-'a') );
-      } else if ( c >= '0' && c <= '9') {
-	code = pgm_read_byte(numCodes  + (c-'0') );
-      }
+      unsigned char code = pgm_read_byte(ustty_map + c );
       if ( (code >> bit) & 0x01 ) {
 	HIGH();
       } else {
