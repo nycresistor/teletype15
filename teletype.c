@@ -33,6 +33,8 @@
 
 #define GET_PIN(P,B) ((PIN##P & _BV(B)) != 0)
 
+#define NO_DATA 0x80
+
 // Number of milliseconds per bit
 #define MS_PER_BIT 22
 
@@ -47,11 +49,14 @@ char textBuffer[BUFFER_SIZE];
 int bufEnd;
 int bufCursor;
 int bitSending;
+int sendingCode;
+int mode;
 
 void initBuffer() {
   bufEnd = 0;
   bufCursor = 0;
   bitSending = 0;
+  mode = 0;
 }
 
 void initClock()
@@ -171,25 +176,33 @@ ISR(USART_RX_vect)
 
 ISR(TIMER1_COMPA_vect)
 {
-  if (bufCursor != bufEnd) {
+  if ( bitSending == 0 ) {
+    // check for available data
+    if ( bufCursor == bufEnd ) {
+      sendingCode = NO_DATA;
+    } else {
+      unsigned char c = textBuffer[bufCursor];
+      sendingCode = pgm_read_byte(ustty_map + c );
+      bufCursor = (bufCursor + 1) % BUFFER_SIZE;
+    }
+  }
+
+  if ( sendingCode != NO_DATA ) {
     if ( bitSending == 0 ) {
       // send start bit
       LOW();
-    } else if ( bitSending == 6 ) {
-      // send stop bit
-      HIGH();
-      bufCursor = (bufCursor + 1) % BUFFER_SIZE;
-      bitSending = 0;
-    } else if ( bitSending < 6 ) {
+    } else if ( bitSending > 0 && bitSending < 6 ) {
       int bit = bitSending - 1;
-      unsigned char c = textBuffer[bufCursor];
-      unsigned char code = pgm_read_byte(ustty_map + c );
-      if ( (code >> bit) & 0x01 ) {
+      if ( (sendingCode >> bit) & 0x01 ) {
 	HIGH();
       } else {
 	LOW();
       }
+    } else if ( bitSending == 6 ) {
+      // send stop bit
+      HIGH();
     }
-    bitSending = (bitSending+1)%40;
   }
+
+  bitSending = (bitSending+1)%7;
 }
