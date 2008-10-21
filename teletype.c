@@ -208,10 +208,13 @@ ISR(TIMER1_COMPA_vect)
       if ( (mode & code & MODE_MASK) == 0 ) {
 	// switch mode
 	if ( code & MODE_LETTERS ) {
-	  sendingCode = LETTERS_CODE;
+	  sendingCode = '[';
+	  mode = MODE_LETTERS;
 	} else if ( code & MODE_FIGURES ) {
-	  sendingCode = FIGURES_CODE;
+	  sendingCode = ']';
+	  mode = MODE_FIGURES;
 	}
+
       } else {
 	bufCursor = (bufCursor + 1) % BUFFER_SIZE;
 	sendingCode = code;
@@ -233,6 +236,8 @@ ISR(TIMER1_COMPA_vect)
     } else if ( bitSending == 6 ) {
       // send stop bit
       HIGH();
+      sendingCode = NO_DATA;
+      bitSending = 0;
     }
   }
 
