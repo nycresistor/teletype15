@@ -1,5 +1,5 @@
 # UISP = avrdude -c avrispmkII -P /dev/ttyUSB0 -p m168 -F
-UISP = avrdude -c avrispmkII -P usb -p m168 -F
+UISP = avrdude -c usbtiny -P usb -p m168 -F
 
 COMPILE = avr-gcc -Wall -Os -Iusbdrv -I. -mmcu=atmega168 #-DDEBUG_LEVEL=1
 

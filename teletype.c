@@ -40,12 +40,15 @@
 
 // Number of milliseconds per bit
 #define MS_PER_BIT 22
+// First bit is 1.5 times the length
+#define MS_FIRST_BIT ((MS_PER_BIT * 3)/2)
 
 // We need a pulse every (MS_PER_BIT*F_CPU)/1000 cycles.
 // We'll use a prescaler of 1/64 to bring this into the
 // 16-bit range.
 #define PRESCALE 64
 #define SCALED_CYCLES_PER_BIT ((MS_PER_BIT*(F_CPU/1000)/PRESCALE))
+#define SCALED_CYCLES_FIRST_BIT ((MS_FIRST_BIT*(F_CPU/1000)/PRESCALE))
 
 #define BUFFER_SIZE 128
 char textBuffer[BUFFER_SIZE];
@@ -226,7 +229,9 @@ ISR(TIMER1_COMPA_vect)
     if ( bitSending == 0 ) {
       // send start bit
       LOW();
+      OCR1A = SCALED_CYCLES_FIRST_BIT;
     } else if ( bitSending > 0 && bitSending < 6 ) {
+      OCR1A = SCALED_CYCLES_PER_BIT;
       int bit = bitSending - 1;
       if ( (sendingCode >> bit) & 0x01 ) {
 	HIGH();
