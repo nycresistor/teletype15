@@ -8,10 +8,10 @@
 
 // Return true if the character exists in the baudot
 // character set
-char hasChar(char character);
+bool hasChar(char character);
 
 // True for letters mode; false for figures mode
-char getMode(char character);
+bool getMode(char character);
 
 // 5-bit baudot code, MSB first
 char getBaudot(char character);

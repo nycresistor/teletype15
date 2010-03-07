@@ -1,5 +1,5 @@
 #include <avr/pgmspace.h>
-#include "asciiToUstty.h"
+#include "asciiToUstty.H"
 
 prog_uchar ustty_map[128] = {
 0x60, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x45,

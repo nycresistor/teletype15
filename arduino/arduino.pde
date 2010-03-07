@@ -1,4 +1,4 @@
-#include "asciiToUstty.h"
+#include "asciiToUstty.H"
 #include <avr/interrupt.h>
 #include <avr/io.h>
 
@@ -45,14 +45,15 @@ boolean isReady() {
 
 void writeByte(byte b);
 
-void init() {
+void setup() {
   pinMode(RELAY_PIN, OUTPUT);
   initTimer();
 }
 
 void loop() {
   if (isReady()) {
-    writeByte('A');
+    writeByte('y');
+    delay(2000);
   }
 }
 
@@ -61,7 +62,7 @@ void setRelay(boolean value) {
 }
 
 void writeByte(byte b) {
-  sendingByte = b;
+  sendingByte = getBaudot(b);
   sendingState = SEND_START;
 }
   
@@ -80,12 +81,13 @@ ISR(TIMER2_COMPA_vect) {
     cyclesLeftForBit = 1;
     sendingState = SEND_DATA;
   } else if (sendingState == SEND_DATA) {
-    sendingBit--;     
-    setRelay(sendingByte & _BV(sendingBit));
+    sendingBit--;
+    setRelay((sendingByte & _BV(sendingBit)) != 0);
+    //setRelay((sendingBit % 2) == 0);
     cyclesLeftForBit = 1;
-    if (sendingBit == 0) { sendingState = SEND_END; }
+    if (sendingBit <= 0) { sendingState = SEND_END; }
   } else if (sendingState == SEND_END) {
-    setRelay(true);
+    setRelay(false);
     cyclesLeftForBit = 2;
     sendingState = SEND_READY;
   }
