@@ -1,4 +1,3 @@
-#include "asciiToUstty.H"
 #include <avr/interrupt.h>
 #include <avr/io.h>
 
@@ -29,6 +28,15 @@ volatile byte sendingBit = 0;
 volatile byte sendingByte = 0;
 volatile byte cyclesLeftForBit = 0;
 
+boolean letterMode = false;
+
+
+#define BUF_SIZE 128
+
+unsigned char buffer[BUF_SIZE];
+unsigned char buf_head = 0;
+unsigned char buf_tail = 0;
+
 // Set up timer interrupt interval on clock 2 at 10.99 ms.
 // 175824 ticks/interval
 // @ 1/1024 prescaler: 172 cycles
@@ -48,12 +56,31 @@ void writeByte(byte b);
 void setup() {
   pinMode(RELAY_PIN, OUTPUT);
   initTimer();
+  Serial.begin(9600);
+  setRelay(true);
+}
+
+void addByteToBuffer(unsigned char c) {
+  int next_tail = (buf_tail+1) % BUF_SIZE;
+  if (next_tail != buf_head) {
+    buffer[buf_tail] = c;
+    buf_tail = next_tail;
+  }
 }
 
 void loop() {
   if (isReady()) {
-    writeByte('y');
-    delay(2000);
+    if (buf_head != buf_tail) {
+      unsigned char c = buffer[buf_head];
+      buf_head = (buf_head+1) % BUF_SIZE;
+      writeByte(c);
+    }
+  }
+  if (Serial.available() > 0) {
+      byte b = Serial.read();
+      if ( b == '=' ) { b = '\r'; }
+      if ( b == '+' ) { b = '\n'; }
+      addByteToBuffer(b);
   }
 }
 
@@ -78,7 +105,7 @@ ISR(TIMER2_COMPA_vect) {
   } else if (sendingState == SEND_START) {
     setRelay(false);
     sendingBit = 5;
-    cyclesLeftForBit = 1;
+    cyclesLeftForBit = 0;
     sendingState = SEND_DATA;
   } else if (sendingState == SEND_DATA) {
     sendingBit--;
@@ -87,8 +114,8 @@ ISR(TIMER2_COMPA_vect) {
     cyclesLeftForBit = 1;
     if (sendingBit <= 0) { sendingState = SEND_END; }
   } else if (sendingState == SEND_END) {
-    setRelay(false);
-    cyclesLeftForBit = 2;
+    setRelay(true);
+    cyclesLeftForBit = 10;
     sendingState = SEND_READY;
   }
 }
