@@ -98,7 +98,7 @@ CodeUSTTY = [ CodeUSTTY_letter, CodeUSTTY_figure, CodeUSTTY_both ]
 
 def encodeChar( imStr, figure=0, letter=0 ):
     encoding = 0
-    for im in imStr[::-1]:  # take imstr backwards
+    for im in imStr:  # take imstr backwards
         encoding = encoding << 1
         if im == '#':
             encoding = encoding + 1
@@ -111,6 +111,8 @@ def encodeChar( imStr, figure=0, letter=0 ):
 def encodeMap( asciiMap, imMap, figure=0, letter=0 ):
     for ( c, imRep ) in imMap.items():
         asciiMap[ ord(c) ] = encodeChar( imRep, figure, letter )
+        if (c == 'm'):
+            print "M is " + imRep + " goes to "+hex(asciiMap[ord(c)])
 
 def createTable( codes ):
     [ codes_letter, codes_figure, codes_both ] = codes
